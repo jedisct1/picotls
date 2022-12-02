@@ -89,7 +89,7 @@ jobs:
         submodules: recursive
     - name: Install dependencies
       run: |
-        curl -sSfL https://cpanmin.us | perl - -v --notest Scope::Guard Test::TCP
+        sudo apt-get -y install libscope-guard-perl libtest-tcp-perl
         git clone --depth=1 https://github.com/google/boringssl.git
         (cd boringssl && mkdir build && cd build && cmake .. && make -j$(nproc))
     - name: Build
