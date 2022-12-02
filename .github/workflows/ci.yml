@@ -7,12 +7,15 @@ jobs:
     name: "Linux / BoringSSL"
     runs-on: [ubuntu-20.04]
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    timeout-minutes: 20
+
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: recursive    
-    - name: Install boringssl
+    - name: Install dependencies
       run: |
+        curl -sSfL https://cpanmin.us | perl - -v --notest Scope::Guard Test::TCP
         git clone --depth=1 https://github.com/google/boringssl.git
         (cd boringssl && mkdir build && cd build && cmake .. && make -j$(nproc))
     - name: Build
