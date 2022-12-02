@@ -5,14 +5,22 @@ on: [push, pull_request]
 jobs:
   boringssl:
     runs-on: [ubuntu-20.04]
-    run: |
-      git clone --depth=1 https://github.com/google/boringssl.git
-      (cd boringssl && mkdir build && cd build && make -j$(nproc))
-      cd build
-      cmake .. -DBORINGSSL_ROOT_DIR=../boringssl
-      make all VERBOSE=1
-      make check
-      
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive    
+    - name: Install boringssl
+      run: |
+        git clone --depth=1 https://github.com/google/boringssl.git
+        (cd boringssl && mkdir build && cd build && make -j$(nproc))
+    - name: Build
+      run: |
+        cd build
+        cmake .. -DBORINGSSL_ROOT_DIR=../boringssl
+        make all VERBOSE=1
+        make check
+
   linux:
     name: "${{ matrix.name }}"
     runs-on: [ubuntu-20.04]
