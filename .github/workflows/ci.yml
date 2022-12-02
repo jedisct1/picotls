@@ -3,6 +3,16 @@ name: CI
 on: [push, pull_request]
 
 jobs:
+  boringssl:
+    runs-on: [ubuntu-20.04]
+    run: |
+      git clone --depth=1 https://github.com/google/boringssl.git
+      (cd boringssl && mkdir build && cd build && make -j$(nproc))
+      cd build
+      cmake .. -DBORINGSSL_ROOT_DIR=../boringssl
+      make all VERBOSE=1
+      make check
+      
   linux:
     name: "${{ matrix.name }}"
     runs-on: [ubuntu-20.04]
@@ -77,12 +87,3 @@ jobs:
         make all VERBOSE=1
         make check
 
-  boringssl:
-    runs-on: [ubuntu-20.04]
-    run: |
-      git clone --depth=1 https://github.com/google/boringssl.git
-      (cd boringssl && mkdir build && cd build && make -j$(nproc))
-      cd build
-      cmake .. -DBORINGSSL_ROOT_DIR=../boringssl
-      make all VERBOSE=1
-      make check
