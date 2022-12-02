@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 jobs:
   boringssl:
+    name: "Linux / BoringSSL"
     runs-on: [ubuntu-20.04]
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
@@ -13,7 +14,7 @@ jobs:
     - name: Install boringssl
       run: |
         git clone --depth=1 https://github.com/google/boringssl.git
-        (cd boringssl && mkdir build && cd build && make -j$(nproc))
+        (cd boringssl && mkdir build && cd build && cmake .. && make -j$(nproc))
     - name: Build
       run: |
         cd build
