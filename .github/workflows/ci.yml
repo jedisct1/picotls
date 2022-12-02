@@ -17,6 +17,7 @@ jobs:
         (cd boringssl && mkdir build && cd build && cmake .. && make -j$(nproc))
     - name: Build
       run: |
+        mkdir build
         cd build
         cmake .. -DBORINGSSL_ROOT_DIR=../boringssl
         make all VERBOSE=1
