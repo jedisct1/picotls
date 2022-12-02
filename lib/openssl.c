@@ -959,8 +959,10 @@ static void aead_do_encrypt_init(ptls_aead_context_t *_ctx, uint64_t seq, const 
     uint8_t iv[PTLS_MAX_IV_SIZE];
     int ret;
 
+#ifdef OPENSSL_IS_BORINGSSL
     ctx->aadlen = 0;
     ctx->mlen = 0;
+#endif
 
     ptls_aead__build_iv(ctx->super.algo, iv, ctx->static_iv, seq);
     memcpy(ctx->chachapoly_iv, iv, sizeof ctx->chachapoly_iv);
