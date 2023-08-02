@@ -86,6 +86,7 @@ IF (BROTLI_DEC_FOUND AND BROTLI_ENC_FOUND)
 ENDIF ()
 
 ADD_LIBRARY(picotls-core ${CORE_FILES})
+
 TARGET_LINK_LIBRARIES(picotls-core ${CORE_EXTRA_LIBS})
 TARGET_LINK_DIRECTORIES(picotls-core PUBLIC ${CORE_EXTRA_LIBS_DIRS})
 
@@ -121,20 +122,22 @@ SET(TEST_EXES test-minicrypto.t)
 SET(PTLSBENCH_LIBS
     picotls-minicrypto picotls-core)
 
+include(ExternalProject)
+
 IF (WITH_AEGIS)
-  FIND_PACKAGE(aegis)
-  IF (aegis_FOUND)
-    INCLUDE_DIRECTORIES(${AEGIS_INCLUDE_DIR})
-    IF (EXISTS "${AEGIS_INCLUDE_DIR}/aegis.h")
-      MESSAGE(STATUS "Enabling AEGIS support (library found in ${aegis_DIR})")
-      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPTLS_HAVE_AEGIS=1")
-      SET(AEGIS_LIBRARIES ${aegis_LIBRARIES})
-    ELSE()
-      MESSAGE(FATAL_ERROR "libaegis found, but aegis.h not found - Define AEGIS_INCLUDE_DIR accordingly")
-    ENDIF()
-  ELSE()
-    MESSAGE(FATAL_ERROR "libaegis not found")
-  ENDIF()
+    MESSAGE(STATUS "  Enabling AEGIS support")
+    
+    ExternalProject_Add(libaegis
+
+        GIT_REPOSITORY https://github.com/jedisct1/libaegis.git
+        GIT_TAG 0.1.1
+        GIT_SHALLOW ON
+        BUILD_COMMAND make -j4
+        BINARY_DIR build
+    )
+    SET(AEGIS_LIBRARIES libaegis/build/libaegis.a)
+    INCLUDE_DIRECTORIES(libaegis/src/include)
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPTLS_HAVE_AEGIS=1")
 ENDIF()
 
 FIND_PACKAGE(OpenSSL)
@@ -144,7 +147,12 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     MESSAGE(STATUS "  Enabling OpenSSL support")
     INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
     ADD_LIBRARY(picotls-openssl lib/openssl.c)
-    TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} picotls-core ${CMAKE_DL_LIBS})
+
+    IF (WITH_AEGIS)
+        ADD_DEPENDENCIES(picotls-openssl libaegis)
+    ENDIF()
+
+    TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} picotls-core ${CMAKE_DL_LIBS} ${AEGIS_LIBRARIES})
     ADD_EXECUTABLE(cli t/cli.c lib/pembase64.c)
     TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
 
