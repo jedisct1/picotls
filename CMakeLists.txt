@@ -31,7 +31,7 @@ ENDIF ()
 IF (WITH_FUSION)
     MESSAGE(STATUS "Enabling 'fusion' AES-GCM engine")
 ENDIF ()
-OPTION(PTLS_HAVE_AEGIS "enable AEGIS (requires libaegis)" ${PTLS_HAVE_AEGIS})
+OPTION(WITH_AEGIS "enable AEGIS (requires libaegis)" ${WITH_AEGIS})
 
 SET(CMAKE_C_FLAGS "-std=c99 -Wall -O2 -g ${CC_WARNING_FLAGS} ${CMAKE_C_FLAGS}")
 INCLUDE_DIRECTORIES(
@@ -122,22 +122,48 @@ SET(TEST_EXES test-minicrypto.t)
 SET(PTLSBENCH_LIBS
     picotls-minicrypto picotls-core)
 
-include(ExternalProject)
-
 IF (WITH_AEGIS)
-    MESSAGE(STATUS "  Enabling AEGIS support")
-    
-    ExternalProject_Add(libaegis
 
-        GIT_REPOSITORY https://github.com/jedisct1/libaegis.git
-        GIT_TAG 0.1.1
-        GIT_SHALLOW ON
-        BUILD_COMMAND make -j4
-        BINARY_DIR build
-    )
-    SET(AEGIS_LIBRARIES libaegis/build/libaegis.a)
-    INCLUDE_DIRECTORIES(libaegis/src/include)
+    MESSAGE(STATUS "Enabling AEGIS support")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPTLS_HAVE_AEGIS=1")
+
+    FIND_PACKAGE(aegis)
+
+    IF (EXISTS ${WITH_AEGIS} OR NOT aegis_FOUND)
+
+        include(ExternalProject)
+        SET(AEGIS_AUTOBUILD TRUE)
+
+        IF (EXISTS ${WITH_AEGIS})
+
+            MESSAGE(STATUS "   Building libaegis from ${WITH_AEGIS}")
+            ExternalProject_Add(libaegis
+                SOURCE_DIR ${WITH_AEGIS}
+                BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaegis/build
+            )
+
+        ELSE()
+
+            MESSAGE(STATUS "   Downloading libaegis 0.1.2 from GitHub")
+            set(WITH_AEGIS ${CMAKE_CURRENT_BINARY_DIR}/libaegis/src/libaegis)
+
+            ExternalProject_Add(libaegis
+
+                GIT_REPOSITORY https://github.com/jedisct1/libaegis.git
+                GIT_TAG 0.1.2
+                GIT_SHALLOW ON
+                PREFIX libaegis
+                BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/libaegis/build
+            )
+
+        ENDIF()
+
+        SET(aegis_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/libaegis/build/libaegis.a)
+        INCLUDE_DIRECTORIES(${WITH_AEGIS}/src/include)
+    ELSE()
+        MESSAGE(STATUS "   Found libaegis package in ${aegis_DIR}")
+    ENDIF()
+
 ENDIF()
 
 FIND_PACKAGE(OpenSSL)
@@ -148,11 +174,7 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
     INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
     ADD_LIBRARY(picotls-openssl lib/openssl.c)
 
-    IF (WITH_AEGIS)
-        ADD_DEPENDENCIES(picotls-openssl libaegis)
-    ENDIF()
-
-    TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} picotls-core ${CMAKE_DL_LIBS} ${AEGIS_LIBRARIES})
+    TARGET_LINK_LIBRARIES(picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} picotls-core ${CMAKE_DL_LIBS} ${aegis_LIBRARIES})
     ADD_EXECUTABLE(cli t/cli.c lib/pembase64.c)
     TARGET_LINK_LIBRARIES(cli picotls-openssl picotls-core)
 
@@ -172,9 +194,14 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
         ${CORE_TEST_FILES}
         t/openssl.c)
     SET_TARGET_PROPERTIES(test-openssl.t PROPERTIES COMPILE_FLAGS "-DPTLS_MEMORY_DEBUG=1")
-    TARGET_LINK_LIBRARIES(test-openssl.t ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${CMAKE_DL_LIBS})
+    TARGET_LINK_LIBRARIES(test-openssl.t ${OPENSSL_CRYPTO_LIBRARIES} ${aegis_LIBRARIES} ${CMAKE_DL_LIBS})
 
-    LIST(APPEND PTLSBENCH_LIBS picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${CMAKE_DL_LIBS})
+    IF (AEGIS_AUTOBUILD)
+        ADD_DEPENDENCIES(picotls-openssl libaegis)
+        ADD_DEPENDENCIES(test-openssl.t libaegis)
+    ENDIF()
+
+    LIST(APPEND PTLSBENCH_LIBS picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${aegis_LIBRARIES} ${CMAKE_DL_LIBS})
 
     SET(TEST_EXES ${TEST_EXES} test-openssl.t)
 ELSE ()
@@ -250,8 +277,14 @@ IF (BUILD_FUZZER)
             LINK_FLAGS "-fsanitize=fuzzer")
     ENDIF (OSS_FUZZ)
 
-    TARGET_LINK_LIBRARIES(fuzz-asn1 picotls-minicrypto picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${LIB_FUZZER})
-    TARGET_LINK_LIBRARIES(fuzz-server-hello picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${LIB_FUZZER})
-    TARGET_LINK_LIBRARIES(fuzz-client-hello picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${AEGIS_LIBRARIES} ${LIB_FUZZER})
+     IF (AEGIS_AUTOBUILD)
+        ADD_DEPENDENCIES(fuzz-asn1 libaegis)
+        ADD_DEPENDENCIES(fuzz-server-hello libaegis)
+        ADD_DEPENDENCIES(fuzz-client-hello libaegis)
+    ENDIF()
+
+    TARGET_LINK_LIBRARIES(fuzz-asn1 picotls-minicrypto picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${aegis_LIBRARIES} ${LIB_FUZZER})
+    TARGET_LINK_LIBRARIES(fuzz-server-hello picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${aegis_LIBRARIES} ${LIB_FUZZER})
+    TARGET_LINK_LIBRARIES(fuzz-client-hello picotls-core picotls-openssl ${OPENSSL_CRYPTO_LIBRARIES} ${aegis_LIBRARIES} ${LIB_FUZZER})
 
 ENDIF()
