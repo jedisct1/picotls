@@ -90,8 +90,13 @@ ADD_LIBRARY(picotls-core ${CORE_FILES})
 TARGET_LINK_LIBRARIES(picotls-core ${CORE_EXTRA_LIBS})
 TARGET_LINK_DIRECTORIES(picotls-core PUBLIC ${CORE_EXTRA_LIBS_DIRS})
 
+IF (WITH_AEGIS)
+    SET(MINICRYPTO_AEGIS_FILES lib/cifra/libaegis.c)
+ENDIF ()
+
 ADD_LIBRARY(picotls-minicrypto
     ${MINICRYPTO_LIBRARY_FILES}
+    ${MINICRYPTO_AEGIS_FILES}
     lib/cifra.c
     lib/cifra/x25519.c
     lib/cifra/chacha20.c
@@ -105,6 +110,7 @@ ADD_LIBRARY(picotls-minicrypto
 TARGET_LINK_LIBRARIES(picotls-minicrypto picotls-core)
 ADD_EXECUTABLE(test-minicrypto.t
     ${MINICRYPTO_LIBRARY_FILES}
+    ${MINICRYPTO_AEGIS_FILES}
     deps/picotest/picotest.c
     ${CORE_TEST_FILES}
     t/minicrypto.c
@@ -180,6 +186,7 @@ IF (OPENSSL_FOUND AND NOT (OPENSSL_VERSION VERSION_LESS "1.0.1"))
 
     ADD_EXECUTABLE(test-openssl.t
         ${MINICRYPTO_LIBRARY_FILES}
+        ${MINICRYPTO_AEGIS_FILES}
         lib/cifra.c
         lib/cifra/x25519.c
         lib/cifra/chacha20.c
