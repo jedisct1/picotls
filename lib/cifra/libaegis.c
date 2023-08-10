@@ -59,4 +59,4 @@ ptls_aead_algorithm_t ptls_minicrypto_aegis256 = {"AEGIS-256",
 ptls_cipher_suite_t ptls_minicrypto_aegis256sha384 = {.id = PTLS_CIPHER_SUITE_AEGIS256_SHA384,
                                                       .name = PTLS_CIPHER_SUITE_NAME_AEGIS256_SHA384,
                                                       .aead = &ptls_minicrypto_aegis256,
-                                                      .hash = &ptls_minicrypto_sha256};
+                                                      .hash = &ptls_minicrypto_sha384};
