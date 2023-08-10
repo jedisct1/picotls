@@ -2218,10 +2218,6 @@ ptls_cipher_suite_t *ptls_openssl_cipher_suites[] = {// ciphers used with sha384
 #if PTLS_OPENSSL_HAVE_CHACHA20_POLY1305
                                                      &ptls_openssl_chacha20poly1305sha256,
 #endif
-#if PTLS_HAVE_AEGIS
-                                                     &ptls_openssl_aegis128lsha256,
-                                                     &ptls_openssl_aegis256sha384,
-#endif
                                                      NULL};
 
 ptls_cipher_suite_t *ptls_openssl_cipher_suites_all[] = {// ciphers used with sha384 (must be first)
